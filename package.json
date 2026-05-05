@@ -10,10 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.3",
     "@tailwindcss/vite": "^4.2.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "firebase": "^12.12.1",
     "react": "^19.2.5",
     "react-calendar-heatmap": "^1.10.0",
     "react-dom": "^19.2.5",
@@ -26,6 +26,7 @@
     "@tailwindcss/postcss": "^4.2.4",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
+    "@types/react-calendar-heatmap": "^1.9.0",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",

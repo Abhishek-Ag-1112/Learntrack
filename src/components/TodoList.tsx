@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FiCheck, FiPlus, FiTrash2, FiClock } from 'react-icons/fi';
 import { useAuth } from '../store/AuthContext';
-import { format, addDays, subDays } from 'date-fns';
+import { addDays, subDays } from 'date-fns';
 
 type DayTab = 'yesterday' | 'today' | 'tomorrow';
 

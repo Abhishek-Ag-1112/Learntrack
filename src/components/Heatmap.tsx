@@ -24,7 +24,7 @@ export default function ActivityHeatmap() {
           startDate={startDate}
           endDate={today}
           values={user.activity.map(a => ({ date: parseISO(a.date), count: a.count }))}
-          classForValue={(value) => {
+          classForValue={(value: any) => {
             if (!value || value.count === 0) {
               return 'color-empty';
             }
@@ -33,14 +33,14 @@ export default function ActivityHeatmap() {
             if (value.count === 3) return 'color-scale-3';
             return 'color-scale-4';
           }}
-          tooltipDataAttrs={(value: any) => {
+          tooltipDataAttrs={((value: any) => {
             if (!value || !value.date) {
               return { 'data-tooltip': 'No activity' };
             }
             return {
               'data-tooltip': `${value.date.toISOString().split('T')[0]}: ${value.count} contributions`
             };
-          }}
+          }) as any}
           showWeekdayLabels={true}
         />
       </div>

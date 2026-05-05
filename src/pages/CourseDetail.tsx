@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../store/AuthContext';
 import { parseCourses } from '../utils/markdownParser';
-import { Course, Phase } from '../types';
+import type { Course, Phase } from '../types';
 import { FiArrowLeft, FiCheck, FiMinus } from 'react-icons/fi';
 
 export default function CourseDetail() {
@@ -117,7 +117,7 @@ export default function CourseDetail() {
                     </span>
                   </div>
                   <div className="divide-y divide-white/5">
-                    {phase.lectures.map((lecture, i) => {
+                    {phase.lectures.map((lecture) => {
                       const status = courseProgress[lecture.id] || 'not_done';
                       return (
                         <button 

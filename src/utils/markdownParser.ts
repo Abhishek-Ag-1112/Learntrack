@@ -1,4 +1,4 @@
-import { Course, Phase, Lecture } from '../types';
+import type { Course, Phase } from '../types';
 import { courseMarkdown } from '../data/courseRaw';
 
 export function parseCourses(): Course[] {

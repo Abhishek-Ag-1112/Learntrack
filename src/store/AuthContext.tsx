@@ -1,69 +1,183 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserData } from '../types';
+import { supabase } from '../supabaseClient';
+import type { UserData } from '../types';
 
 interface AuthContextType {
   user: UserData | null;
-  login: () => void;
-  logout: () => void;
-  updateUser: (data: Partial<UserData>) => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (data: Partial<UserData>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const mockUser: UserData = {
-  uid: 'user-123',
-  name: 'Alex Developer',
-  email: 'alex@example.com',
-  photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-  streak: 12,
-  longestStreak: 15,
+const createDefaultUserData = (user_id: string, name: string, email: string, photoURL: string): UserData => ({
+  uid: user_id,
+  name: name || 'User',
+  email: email || '',
+  photoURL: photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name || 'User'}`,
+  streak: 0,
+  longestStreak: 0,
   lastActiveDate: new Date().toISOString().split('T')[0],
   progress: {},
-  todos: [
-    { id: '1', text: 'Finish React setup', date: new Date().toISOString().split('T')[0], completed: true },
-    { id: '2', text: 'Solve 2 Sum problem', date: new Date().toISOString().split('T')[0], completed: false }
-  ],
-  activity: [
-    { date: new Date(Date.now() - 86400000).toISOString().split('T')[0], count: 3 },
-    { date: new Date().toISOString().split('T')[0], count: 1 }
-  ]
-};
+  todos: [],
+  activity: []
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem('learntrack_user');
-    if (saved) {
-      setUser(JSON.parse(saved));
-    }
+    // Check active session on initial load
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await fetchOrCreateUser(session.user);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Error initializing auth:', err);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      if (session?.user) {
+        await fetchOrCreateUser(session.user);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = () => {
-    let saved = localStorage.getItem('learntrack_user');
-    if (!saved) {
-      localStorage.setItem('learntrack_user', JSON.stringify(mockUser));
-      setUser(mockUser);
-    } else {
-      setUser(JSON.parse(saved));
+  const fetchOrCreateUser = async (authUser: any) => {
+    try {
+      // Small delay to let the DB trigger create the row first
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('uid', authUser.id)
+        .single();
+
+      if (data && !error) {
+        // User row exists (created by trigger or previously)
+        setUser({
+          uid: data.uid,
+          name: data.name || 'User',
+          email: data.email || authUser.email || '',
+          photoURL: data.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name || 'User'}`,
+          streak: data.streak || 0,
+          longestStreak: data.longestStreak || 0,
+          lastActiveDate: data.lastActiveDate || new Date().toISOString().split('T')[0],
+          progress: data.progress || {},
+          todos: data.todos || [],
+          activity: data.activity || []
+        });
+      } else if (error && error.code === 'PGRST116') {
+        // Not found — trigger may not have fired yet, create manually via upsert
+        const newUserData = createDefaultUserData(
+          authUser.id,
+          authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User',
+          authUser.email || '',
+          authUser.user_metadata?.avatar_url || ''
+        );
+
+        const { error: upsertError } = await supabase
+          .from('users')
+          .upsert([newUserData], { onConflict: 'uid' });
+
+        if (upsertError) {
+          console.error('Error upserting user:', upsertError);
+        }
+        setUser(newUserData);
+      } else {
+        console.error('Error fetching user:', error);
+        setUser(null);
+      }
+    } catch (err) {
+      console.error('Unexpected auth error:', err);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
   };
 
-  const updateUser = (data: Partial<UserData>) => {
+  const signup = async (email: string, password: string, name: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+        }
+      }
+    });
+    if (error) throw error;
+  };
+
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
+
+  const updateUser = async (data: Partial<UserData>) => {
     if (user) {
       const updated = { ...user, ...data };
-      setUser(updated);
-      localStorage.setItem('learntrack_user', JSON.stringify(updated));
+      setUser(updated); // Optimistic UI update
+      try {
+        const { error } = await supabase
+          .from('users')
+          .update(data)
+          .eq('uid', user.uid);
+          
+        if (error) {
+          console.error('Error updating user data:', error);
+          setUser(user); // Revert on failure
+        }
+      } catch (error) {
+        console.error('Error updating user data:', error);
+        setUser(user); // Revert on failure
+      }
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

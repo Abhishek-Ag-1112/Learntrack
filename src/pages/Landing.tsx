@@ -56,7 +56,7 @@ export default function Landing() {
           onClick={() => navigate('/login')}
           className="group flex items-center gap-2 px-8 py-4 rounded-full bg-white text-background font-bold text-lg hover:scale-105 transition-transform"
         >
-          Get Started with Google
+          Get Started
           <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
         </button>
 

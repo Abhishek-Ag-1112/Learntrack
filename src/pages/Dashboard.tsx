@@ -6,7 +6,7 @@ import ActivityHeatmap from '../components/Heatmap';
 import TodoList from '../components/TodoList';
 import { useAuth } from '../store/AuthContext';
 import { parseCourses } from '../utils/markdownParser';
-import { Course } from '../types';
+import type { Course } from '../types';
 import { FaFire } from 'react-icons/fa';
 
 export default function Dashboard() {

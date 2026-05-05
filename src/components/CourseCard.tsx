@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Course } from '../types';
+import type { Course } from '../types';
 import { useAuth } from '../store/AuthContext';
 
 interface CourseCardProps {
