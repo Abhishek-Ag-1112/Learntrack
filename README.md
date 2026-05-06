@@ -1,73 +1,141 @@
-# Learntrack
+# 🎓 LearnTrack
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A premium personal learning management app built with **React**, **Vite**, **TypeScript**, **Tailwind CSS**, and **Supabase**.
 
-Currently, two official plugins are available:
+Track your courses, build daily streaks, compete on leaderboards, and own your learning progress.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+![LearnTrack](https://img.shields.io/badge/React-19-blue?logo=react) ![Vite](https://img.shields.io/badge/Vite-8-purple?logo=vite) ![Supabase](https://img.shields.io/badge/Supabase-Backend-green?logo=supabase) ![TypeScript](https://img.shields.io/badge/TypeScript-6-blue?logo=typescript)
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## ✨ Features
 
-## Expanding the ESLint configuration
+- **Dashboard** — Overview of all your enrolled courses with progress tracking
+- **Course Detail** — Phase-by-phase curriculum with tri-state progress toggles (Not Done → Half Done → Done)
+- **Leaderboard** — Per-course rankings showing top learners in real-time
+- **Activity Heatmap** — GitHub-style contribution heatmap to visualize your learning streak
+- **Todo List** — Personal task manager for daily learning goals
+- **Auth** — Secure email/password authentication via Supabase
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🚀 Getting Started
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Node.js** 18+
+- A **Supabase** project ([create one free](https://supabase.com))
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Abhishek-Ag-1112/Learntrack.git
+cd Learntrack
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Install dependencies
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
+
+### 3. Set up environment variables
+
+Copy the example env file and fill in your Supabase credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your values from **Supabase Dashboard → Settings → API**:
+
+```env
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### 4. Set up the database
+
+1. Open the **SQL Editor** in your Supabase dashboard
+2. Paste the contents of `schema.sql`
+3. Click **Run**
+
+### 5. Start the dev server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## 🏗️ Build for Production
+
+```bash
+npm run build
+```
+
+Output will be in the `dist/` directory.
+
+---
+
+## 🌐 Deploy to Vercel
+
+1. Push this repo to GitHub
+2. Go to [vercel.com](https://vercel.com) → **Add New Project** → Import this repo
+3. Vercel will auto-detect **Vite** as the framework
+4. Add your environment variables under **Settings → Environment Variables**:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+5. Click **Deploy**
+
+The `vercel.json` is pre-configured for SPA client-side routing.
+
+---
+
+## 📁 Project Structure
+
+```
+learntrack/
+├── public/               # Static assets
+├── src/
+│   ├── components/       # Reusable UI components
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── Heatmap.tsx
+│   │   ├── Leaderboard.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── TodoList.tsx
+│   ├── pages/            # Route pages
+│   │   ├── Landing.tsx
+│   │   ├── Login.tsx
+│   │   ├── Dashboard.tsx
+│   │   └── CourseDetail.tsx
+│   ├── store/            # Global state (AuthContext)
+│   ├── utils/            # Helper functions
+│   ├── types.ts          # TypeScript interfaces
+│   ├── supabaseClient.ts # Supabase init
+│   ├── App.tsx           # Router setup
+│   └── main.tsx          # Entry point
+├── schema.sql            # Supabase database schema
+├── vercel.json           # Vercel deployment config
+├── .env.example          # Environment variable template
+└── package.json
+```
+
+---
+
+## 🛡️ Tech Stack
+
+| Layer      | Technology                          |
+|------------|-------------------------------------|
+| Frontend   | React 19, TypeScript 6, Vite 8     |
+| Styling    | Tailwind CSS 4                      |
+| Backend    | Supabase (Auth + PostgreSQL + RLS)  |
+| Deployment | Vercel                              |
+
+---
+
+## 📝 License
+
+MIT
