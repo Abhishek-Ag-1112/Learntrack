@@ -30,58 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Safety timeout — never stay loading forever
-    const timeout = setTimeout(() => {
-      setLoading(false);
-      console.warn('Auth loading timed out after 10s — forcing render');
-    }, 10000);
-
-    // Check active session on initial load
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await fetchOrCreateUser(session.user);
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-        console.error('Error initializing auth:', err);
-        setUser(null);
-      } finally {
-        clearTimeout(timeout);
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      if (session?.user) {
-        await fetchOrCreateUser(session.user);
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const fetchOrCreateUser = async (authUser: any) => {
+  const fetchOrCreateUser = async (authUser: any): Promise<void> => {
     try {
-      // Small delay to let the DB trigger create the row first
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -89,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (data && !error) {
-        // User row exists (created by trigger or previously)
         setUser({
           uid: data.uid,
           name: data.name || 'User',
@@ -103,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           activity: data.activity || []
         });
       } else if (error && error.code === 'PGRST116') {
-        // Not found — trigger may not have fired yet, create manually via upsert
+        // Row not found — create it
         const newUserData = createDefaultUserData(
           authUser.id,
           authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'User',
@@ -126,10 +75,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Unexpected auth error:', err);
       setUser(null);
-    } finally {
-      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    // Use onAuthStateChange as the SOLE source of truth.
+    // It fires immediately with INITIAL_SESSION on mount,
+    // so we do NOT also call getSession() (which causes a race condition).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // SIGNED_IN, INITIAL_SESSION, TOKEN_REFRESHED, etc.
+        try {
+          await fetchOrCreateUser(session.user);
+        } catch (err) {
+          console.error('Auth state change error:', err);
+          setUser(null);
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      }
+    );
+
+    // Safety timeout — if onAuthStateChange never fires (rare edge case)
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth loading timed out after 5s — forcing render');
+        setLoading(false);
+      }
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const login = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
