@@ -132,15 +132,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) throw error;
+    // Directly fetch user data so we don't rely on the async listener
+    if (data.user) {
+      await fetchOrCreateUser(data.user);
+    }
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -150,6 +154,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
     if (error) throw error;
+    // Directly fetch/create user data so we don't rely on the async listener
+    if (data.user) {
+      await fetchOrCreateUser(data.user);
+    }
   };
 
   const logout = async () => {
