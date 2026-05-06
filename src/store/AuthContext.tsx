@@ -31,6 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Safety timeout — never stay loading forever
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      console.warn('Auth loading timed out after 10s — forcing render');
+    }, 10000);
+
     // Check active session on initial load
     const initializeAuth = async () => {
       try {
@@ -44,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error initializing auth:', err);
         setUser(null);
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
     };
@@ -159,17 +166,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...user, ...data };
       setUser(updated); // Optimistic UI update
       try {
-        const { error } = await supabase
+        const { data: updatedData, error } = await supabase
           .from('users')
           .update(data)
-          .eq('uid', user.uid);
+          .eq('uid', user.uid)
+          .select();
           
         if (error) {
-          console.error('Error updating user data:', error);
+          console.error('Error updating user data in Supabase:', error);
           setUser(user); // Revert on failure
+        } else if (!updatedData || updatedData.length === 0) {
+          console.error('Update completed but no rows were modified. Possible RLS issue or row missing.');
+          setUser(user);
         }
       } catch (error) {
-        console.error('Error updating user data:', error);
+        console.error('Unexpected error updating user data:', error);
         setUser(user); // Revert on failure
       }
     }
@@ -177,7 +188,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser }}>
-      {!loading && children}
+      {loading ? (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          backgroundColor: '#0a0a12',
+          color: '#ffffff',
+          fontFamily: 'Inter, sans-serif'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '3px solid rgba(255,255,255,0.1)',
+              borderTopColor: '#5A32FA',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 16px'
+            }} />
+            <p style={{ opacity: 0.6, fontSize: '14px' }}>Loading LearnTrack...</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        </div>
+      ) : children}
     </AuthContext.Provider>
   );
 }

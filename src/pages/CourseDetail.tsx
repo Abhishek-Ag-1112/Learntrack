@@ -5,6 +5,7 @@ import { useAuth } from '../store/AuthContext';
 import { parseCourses } from '../utils/markdownParser';
 import type { Course, Phase } from '../types';
 import { FiArrowLeft, FiCheck, FiMinus } from 'react-icons/fi';
+import Leaderboard from '../components/Leaderboard';
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -98,44 +99,51 @@ export default function CourseDetail() {
             </div>
           </div>
 
-          {/* Curriculum */}
-          <div className="space-y-6">
-            {course.phases.map((phase: Phase) => {
-              let phaseCompleted = 0;
-              phase.lectures.forEach(l => {
-                const st = courseProgress[l.id];
-                if (st === 'done') phaseCompleted += 1;
-                else if (st === 'half_done') phaseCompleted += 0.5;
-              });
-              
-              return (
-                <div key={phase.id} className="glass-card overflow-hidden">
-                  <div className="p-5 border-b border-white/5 bg-surface/50 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-white">{phase.title}</h2>
-                    <span className="text-xs font-semibold text-textSecondary bg-background px-2.5 py-1 rounded-md">
-                      {Math.floor(phaseCompleted)} / {phase.lectures.length}
-                    </span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Curriculum */}
+            <div className="lg:col-span-2 space-y-6">
+              {course.phases.map((phase: Phase) => {
+                let phaseCompleted = 0;
+                phase.lectures.forEach(l => {
+                  const st = courseProgress[l.id];
+                  if (st === 'done') phaseCompleted += 1;
+                  else if (st === 'half_done') phaseCompleted += 0.5;
+                });
+                
+                return (
+                  <div key={phase.id} className="glass-card overflow-hidden">
+                    <div className="p-5 border-b border-white/5 bg-surface/50 flex justify-between items-center">
+                      <h2 className="text-lg font-bold text-white">{phase.title}</h2>
+                      <span className="text-xs font-semibold text-textSecondary bg-background px-2.5 py-1 rounded-md">
+                        {Math.floor(phaseCompleted)} / {phase.lectures.length}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                      {phase.lectures.map((lecture) => {
+                        const status = courseProgress[lecture.id] || 'not_done';
+                        return (
+                          <button 
+                            key={lecture.id}
+                            onClick={() => handleToggle(lecture.id)}
+                            className="w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-colors group text-left"
+                          >
+                            {getStatusIcon(status)}
+                            <span className={`flex-1 text-sm ${status === 'done' ? 'text-textSecondary line-through' : 'text-white/90'}`}>
+                              {lecture.title}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="divide-y divide-white/5">
-                    {phase.lectures.map((lecture) => {
-                      const status = courseProgress[lecture.id] || 'not_done';
-                      return (
-                        <button 
-                          key={lecture.id}
-                          onClick={() => handleToggle(lecture.id)}
-                          className="w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-colors group text-left"
-                        >
-                          {getStatusIcon(status)}
-                          <span className={`flex-1 text-sm ${status === 'done' ? 'text-textSecondary line-through' : 'text-white/90'}`}>
-                            {lecture.title}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Sidebar / Leaderboard */}
+            <div className="space-y-6">
+              <Leaderboard course={course} />
+            </div>
           </div>
         </div>
       </main>

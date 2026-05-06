@@ -38,11 +38,11 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 -- ============================================
 -- 3. RLS Policies – users can only touch their own row
 -- ============================================
-CREATE POLICY "Users can view their own profile" ON public.users
-  FOR SELECT USING ( auth.uid() = uid );
+CREATE POLICY "Anyone can view profiles" ON public.users
+  FOR SELECT USING ( true );
 
 CREATE POLICY "Users can update their own profile" ON public.users
-  FOR UPDATE USING ( auth.uid() = uid );
+  FOR UPDATE USING ( auth.uid() = uid ) WITH CHECK ( auth.uid() = uid );
 
 CREATE POLICY "Users can insert their own profile" ON public.users
   FOR INSERT WITH CHECK ( auth.uid() = uid );
