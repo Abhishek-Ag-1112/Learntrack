@@ -24,26 +24,34 @@ export default function Leaderboard({ course }: LeaderboardProps) {
   useEffect(() => {
     async function fetchLeaderboard() {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, name, "photoURL", progress(course_id, status)')
-          .eq('progress.course_id', course.id);
+        // Fetch all profiles and progress for this course separately
+        const [profilesRes, progressRes] = await Promise.all([
+          supabase.from('profiles').select('id, name, "photoURL"'),
+          supabase.from('progress').select('user_id, status').eq('course_id', course.id)
+        ]);
 
-        if (error) throw error;
+        if (profilesRes.error) throw profilesRes.error;
+        if (progressRes.error) throw progressRes.error;
 
-        if (data) {
-          const entries: LeaderboardEntry[] = data.map((profile: any) => {
+        // Group progress by user_id
+        const progressByUser: Record<string, any[]> = {};
+        progressRes.data?.forEach((p: any) => {
+          if (!progressByUser[p.user_id]) progressByUser[p.user_id] = [];
+          progressByUser[p.user_id].push(p);
+        });
+
+        if (profilesRes.data) {
+          const entries: LeaderboardEntry[] = profilesRes.data.map((profile: any) => {
             let completedValue = 0;
-            // Filter progress for this course, since eq might just filter the parent or we just map it.
-            const courseProgress = profile.progress?.filter((p: any) => p.course_id === course.id) || [];
-            
-            courseProgress.forEach((p: any) => {
+            const userProgress = progressByUser[profile.id] || [];
+
+            userProgress.forEach((p: any) => {
               if (p.status === 'done') completedValue += 1;
               else if (p.status === 'half_done') completedValue += 0.5;
             });
 
-            const percentComplete = course.totalLectures === 0 
-              ? 0 
+            const percentComplete = course.totalLectures === 0
+              ? 0
               : Math.round((completedValue / course.totalLectures) * 100);
 
             return {
@@ -55,10 +63,11 @@ export default function Leaderboard({ course }: LeaderboardProps) {
             };
           });
 
-          // Sort by completed value descending
+          // Sort by completed value descending, filter out zero progress
           entries.sort((a, b) => b.completedValue - a.completedValue);
-          
-          setLeaders(entries.slice(0, 10)); // Top 10
+          const filtered = entries.filter(e => e.completedValue > 0);
+
+          setLeaders(filtered.slice(0, 10)); // Top 10
         }
       } catch (err) {
         console.error('Error fetching leaderboard:', err);

@@ -69,7 +69,7 @@ CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT
 CREATE POLICY "Users can delete their own profile" ON public.profiles FOR DELETE USING (auth.uid() = id);
 
 -- PROGRESS
-CREATE POLICY "Users can view their own progress" ON public.progress FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can view progress" ON public.progress FOR SELECT USING (true);
 CREATE POLICY "Users can update their own progress" ON public.progress FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own progress" ON public.progress FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own progress" ON public.progress FOR DELETE USING (auth.uid() = user_id);

@@ -189,8 +189,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...user, ...data };
       setUser(updated); // Optimistic UI update
       try {
-        const promises: any[] = [];
-
         // Profile updates
         const profileUpdates: any = {};
         if (data.name !== undefined) profileUpdates.name = data.name;
@@ -201,66 +199,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.lastActiveDate !== undefined) profileUpdates.lastActiveDate = data.lastActiveDate;
 
         if (Object.keys(profileUpdates).length > 0) {
-          promises.push(supabase.from('profiles').update(profileUpdates).eq('id', user.uid));
+          const { error } = await supabase.from('profiles').update(profileUpdates).eq('id', user.uid);
+          if (error) console.error('Error updating profile:', error);
         }
 
-        // Todos
+        // Todos — delete old, insert new
         if (data.todos !== undefined) {
-          promises.push(
-            supabase.from('todos').delete().eq('user_id', user.uid).then(() => {
-              if (data.todos!.length > 0) {
-                const todosToInsert = data.todos!.map(t => ({
-                  id: t.id,
-                  user_id: user.uid,
-                  text: t.text,
-                  date: t.date,
-                  completed: t.completed
-                }));
-                return supabase.from('todos').insert(todosToInsert);
-              }
-            })
-          );
+          const { error: delErr } = await supabase.from('todos').delete().eq('user_id', user.uid);
+          if (delErr) console.error('Error deleting todos:', delErr);
+          if (data.todos.length > 0) {
+            const todosToInsert = data.todos.map(t => ({
+              id: t.id,
+              user_id: user.uid,
+              text: t.text,
+              date: t.date,
+              completed: t.completed
+            }));
+            const { error: insErr } = await supabase.from('todos').insert(todosToInsert);
+            if (insErr) console.error('Error inserting todos:', insErr);
+          }
         }
 
-        // Activity
+        // Activity — delete old, insert new
         if (data.activity !== undefined) {
-          promises.push(
-            supabase.from('activity').delete().eq('user_id', user.uid).then(() => {
-              if (data.activity!.length > 0) {
-                const activityToInsert = data.activity!.map(a => ({
-                  user_id: user.uid,
-                  date: a.date,
-                  count: a.count
-                }));
-                return supabase.from('activity').insert(activityToInsert);
-              }
-            })
-          );
+          const { error: delErr } = await supabase.from('activity').delete().eq('user_id', user.uid);
+          if (delErr) console.error('Error deleting activity:', delErr);
+          if (data.activity.length > 0) {
+            const activityToInsert = data.activity.map(a => ({
+              user_id: user.uid,
+              date: a.date,
+              count: a.count
+            }));
+            const { error: insErr } = await supabase.from('activity').insert(activityToInsert);
+            if (insErr) console.error('Error inserting activity:', insErr);
+          }
         }
 
-        // Progress
+        // Progress — upsert changed entries
         if (data.progress !== undefined) {
-          promises.push(
-            supabase.from('progress').delete().eq('user_id', user.uid).then(() => {
-              const progressToInsert: any[] = [];
-              Object.entries(data.progress!).forEach(([courseId, lectures]) => {
-                Object.entries(lectures).forEach(([lectureId, status]) => {
-                  progressToInsert.push({
-                    user_id: user.uid,
-                    course_id: courseId,
-                    lecture_id: lectureId,
-                    status
-                  });
-                });
+          const progressToUpsert: any[] = [];
+          Object.entries(data.progress).forEach(([courseId, lectures]) => {
+            Object.entries(lectures).forEach(([lectureId, status]) => {
+              progressToUpsert.push({
+                user_id: user.uid,
+                course_id: courseId,
+                lecture_id: lectureId,
+                status
               });
-              if (progressToInsert.length > 0) {
-                return supabase.from('progress').insert(progressToInsert);
-              }
-            })
-          );
+            });
+          });
+          if (progressToUpsert.length > 0) {
+            const { error: upsertErr } = await supabase
+              .from('progress')
+              .upsert(progressToUpsert, { onConflict: 'user_id, course_id, lecture_id' });
+            if (upsertErr) console.error('Error upserting progress:', upsertErr);
+          }
         }
-
-        await Promise.all(promises);
       } catch (error) {
         console.error('Unexpected error updating user data:', error);
         setUser(user); // Revert on failure
