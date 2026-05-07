@@ -32,26 +32,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchOrCreateUser = async (authUser: any): Promise<void> => {
     try {
-      const { data, error } = await supabase
-        .from('users')
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
         .select('*')
-        .eq('uid', authUser.id)
+        .eq('id', authUser.id)
         .single();
 
-      if (data && !error) {
-        setUser({
-          uid: data.uid,
-          name: data.name || 'User',
-          email: data.email || authUser.email || '',
-          photoURL: data.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name || 'User'}`,
-          streak: data.streak || 0,
-          longestStreak: data.longestStreak || 0,
-          lastActiveDate: data.lastActiveDate || new Date().toISOString().split('T')[0],
-          progress: data.progress || {},
-          todos: data.todos || [],
-          activity: data.activity || []
+      if (profile && !profileError) {
+        // Fetch relations concurrently
+        const [
+          { data: progressData },
+          { data: todosData },
+          { data: activityData }
+        ] = await Promise.all([
+          supabase.from('progress').select('*').eq('user_id', authUser.id),
+          supabase.from('todos').select('*').eq('user_id', authUser.id),
+          supabase.from('activity').select('*').eq('user_id', authUser.id)
+        ]);
+
+        const progress: any = {};
+        progressData?.forEach(p => {
+          if (!progress[p.course_id]) progress[p.course_id] = {};
+          progress[p.course_id][p.lecture_id] = p.status;
         });
-      } else if (error && error.code === 'PGRST116') {
+
+        setUser({
+          uid: profile.id,
+          name: profile.name || 'User',
+          email: profile.email || authUser.email || '',
+          photoURL: profile.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name || 'User'}`,
+          streak: profile.streak || 0,
+          longestStreak: profile.longestStreak || 0,
+          lastActiveDate: profile.lastActiveDate || new Date().toISOString().split('T')[0],
+          progress,
+          todos: todosData?.map(t => ({ id: t.id, text: t.text, date: t.date, completed: t.completed })) || [],
+          activity: activityData?.map(a => ({ date: a.date, count: a.count })) || []
+        });
+      } else if (profileError && profileError.code === 'PGRST116') {
         // Row not found — create it
         const newUserData = createDefaultUserData(
           authUser.id,
@@ -61,15 +78,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         const { error: upsertError } = await supabase
-          .from('users')
-          .upsert([newUserData], { onConflict: 'uid' });
+          .from('profiles')
+          .upsert([{
+            id: newUserData.uid,
+            name: newUserData.name,
+            email: newUserData.email,
+            photoURL: newUserData.photoURL,
+            streak: newUserData.streak,
+            longestStreak: newUserData.longestStreak,
+            lastActiveDate: newUserData.lastActiveDate
+          }], { onConflict: 'id' });
 
         if (upsertError) {
           console.error('Error upserting user:', upsertError);
         }
         setUser(newUserData);
       } else {
-        console.error('Error fetching user:', error);
+        console.error('Error fetching user:', profileError);
         setUser(null);
       }
     } catch (err) {
@@ -164,19 +189,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...user, ...data };
       setUser(updated); // Optimistic UI update
       try {
-        const { data: updatedData, error } = await supabase
-          .from('users')
-          .update(data)
-          .eq('uid', user.uid)
-          .select();
-          
-        if (error) {
-          console.error('Error updating user data in Supabase:', error);
-          setUser(user); // Revert on failure
-        } else if (!updatedData || updatedData.length === 0) {
-          console.error('Update completed but no rows were modified. Possible RLS issue or row missing.');
-          setUser(user);
+        const promises: any[] = [];
+
+        // Profile updates
+        const profileUpdates: any = {};
+        if (data.name !== undefined) profileUpdates.name = data.name;
+        if (data.email !== undefined) profileUpdates.email = data.email;
+        if (data.photoURL !== undefined) profileUpdates.photoURL = data.photoURL;
+        if (data.streak !== undefined) profileUpdates.streak = data.streak;
+        if (data.longestStreak !== undefined) profileUpdates.longestStreak = data.longestStreak;
+        if (data.lastActiveDate !== undefined) profileUpdates.lastActiveDate = data.lastActiveDate;
+
+        if (Object.keys(profileUpdates).length > 0) {
+          promises.push(supabase.from('profiles').update(profileUpdates).eq('id', user.uid));
         }
+
+        // Todos
+        if (data.todos !== undefined) {
+          promises.push(
+            supabase.from('todos').delete().eq('user_id', user.uid).then(() => {
+              if (data.todos!.length > 0) {
+                const todosToInsert = data.todos!.map(t => ({
+                  id: t.id,
+                  user_id: user.uid,
+                  text: t.text,
+                  date: t.date,
+                  completed: t.completed
+                }));
+                return supabase.from('todos').insert(todosToInsert);
+              }
+            })
+          );
+        }
+
+        // Activity
+        if (data.activity !== undefined) {
+          promises.push(
+            supabase.from('activity').delete().eq('user_id', user.uid).then(() => {
+              if (data.activity!.length > 0) {
+                const activityToInsert = data.activity!.map(a => ({
+                  user_id: user.uid,
+                  date: a.date,
+                  count: a.count
+                }));
+                return supabase.from('activity').insert(activityToInsert);
+              }
+            })
+          );
+        }
+
+        // Progress
+        if (data.progress !== undefined) {
+          promises.push(
+            supabase.from('progress').delete().eq('user_id', user.uid).then(() => {
+              const progressToInsert: any[] = [];
+              Object.entries(data.progress!).forEach(([courseId, lectures]) => {
+                Object.entries(lectures).forEach(([lectureId, status]) => {
+                  progressToInsert.push({
+                    user_id: user.uid,
+                    course_id: courseId,
+                    lecture_id: lectureId,
+                    status
+                  });
+                });
+              });
+              if (progressToInsert.length > 0) {
+                return supabase.from('progress').insert(progressToInsert);
+              }
+            })
+          );
+        }
+
+        await Promise.all(promises);
       } catch (error) {
         console.error('Unexpected error updating user data:', error);
         setUser(user); // Revert on failure

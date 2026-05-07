@@ -25,18 +25,21 @@ export default function Leaderboard({ course }: LeaderboardProps) {
     async function fetchLeaderboard() {
       try {
         const { data, error } = await supabase
-          .from('users')
-          .select('uid, name, "photoURL", progress');
+          .from('profiles')
+          .select('id, name, "photoURL", progress(course_id, status)')
+          .eq('progress.course_id', course.id);
 
         if (error) throw error;
 
         if (data) {
-          const entries: LeaderboardEntry[] = data.map((user: any) => {
-            const courseProgress = user.progress?.[course.id] || {};
+          const entries: LeaderboardEntry[] = data.map((profile: any) => {
             let completedValue = 0;
-            Object.values(courseProgress).forEach((status: any) => {
-              if (status === 'done') completedValue += 1;
-              else if (status === 'half_done') completedValue += 0.5;
+            // Filter progress for this course, since eq might just filter the parent or we just map it.
+            const courseProgress = profile.progress?.filter((p: any) => p.course_id === course.id) || [];
+            
+            courseProgress.forEach((p: any) => {
+              if (p.status === 'done') completedValue += 1;
+              else if (p.status === 'half_done') completedValue += 0.5;
             });
 
             const percentComplete = course.totalLectures === 0 
@@ -44,9 +47,9 @@ export default function Leaderboard({ course }: LeaderboardProps) {
               : Math.round((completedValue / course.totalLectures) * 100);
 
             return {
-              uid: user.uid,
-              name: user.name || 'Anonymous',
-              photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'User'}`,
+              uid: profile.id,
+              name: profile.name || 'Anonymous',
+              photoURL: profile.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name || 'User'}`,
               completedValue,
               percentComplete
             };
