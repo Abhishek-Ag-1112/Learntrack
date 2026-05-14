@@ -9,7 +9,7 @@ import Leaderboard from '../components/Leaderboard';
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, recordActivity } = useAuth();
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
 
@@ -54,6 +54,9 @@ export default function CourseDetail() {
         }
       }
     });
+    
+    // Record activity on any progress change
+    recordActivity();
   };
 
   const getStatusIcon = (status: string) => {

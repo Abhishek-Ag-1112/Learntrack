@@ -6,7 +6,7 @@ import { addDays, subDays } from 'date-fns';
 type DayTab = 'yesterday' | 'today' | 'tomorrow';
 
 export default function TodoList() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, recordActivity } = useAuth();
   const [activeTab, setActiveTab] = useState<DayTab>('today');
   const [newTask, setNewTask] = useState('');
 
@@ -28,10 +28,15 @@ export default function TodoList() {
   ).length;
 
   const handleToggle = (id: string) => {
+    const todoToToggle = user.todos.find(t => t.id === id);
     const newTodos = user.todos.map(t => 
       t.id === id ? { ...t, completed: !t.completed } : t
     );
     updateUser({ todos: newTodos });
+    
+    if (todoToToggle && !todoToToggle.completed) {
+      recordActivity();
+    }
   };
 
   const handleDelete = (id: string) => {

@@ -10,6 +10,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<UserData>) => Promise<void>;
+  recordActivity: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,8 +85,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const recordActivity = async () => {
+    if (!user) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    let newStreak = user.streak;
+    let newLongestStreak = user.longestStreak;
+    let newLastActiveDate = user.lastActiveDate;
+    const newActivity = [...user.activity];
+
+    // Update heatmap count
+    const todayActivityIndex = newActivity.findIndex(a => a.date === todayStr);
+    if (todayActivityIndex !== -1) {
+      newActivity[todayActivityIndex].count += 1;
+    } else {
+      newActivity.push({ date: todayStr, count: 1 });
+    }
+
+    // Update streak logic
+    if (user.lastActiveDate !== todayStr) {
+      if (!user.lastActiveDate) {
+        newStreak = 1;
+      } else {
+        const lastActive = new Date(user.lastActiveDate);
+        const today = new Date(todayStr);
+        const diffTime = Math.abs(today.getTime() - lastActive.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        if (diffDays === 1) {
+          // Consecutive day
+          newStreak += 1;
+        } else if (diffDays > 1) {
+          // Streak broken
+          newStreak = 1;
+        }
+      }
+      newLastActiveDate = todayStr;
+      if (newStreak > newLongestStreak) {
+        newLongestStreak = newStreak;
+      }
+    }
+
+    await updateUser({
+      streak: newStreak,
+      longestStreak: newLongestStreak,
+      lastActiveDate: newLastActiveDate,
+      activity: newActivity
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, updateUser, recordActivity }}>
       {loading ? (
         <div style={{
           display: 'flex',
