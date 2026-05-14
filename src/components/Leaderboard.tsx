@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 import type { Course } from '../types';
 import { useAuth } from '../store/AuthContext';
 
@@ -20,38 +22,54 @@ export default function Leaderboard({ course }: LeaderboardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mocked leaderboard data since backend is removed
-    setLoading(true);
-    setTimeout(() => {
-      let entries: LeaderboardEntry[] = [];
-      
-      // If the current user has progress, show them in the leaderboard
-      if (user && user.progress && user.progress[course.id]) {
-        let completedValue = 0;
-        Object.values(user.progress[course.id]).forEach((status) => {
-          if (status === 'done') completedValue += 1;
-          else if (status === 'half_done') completedValue += 0.5;
+    async function fetchLeaderboard() {
+      try {
+        setLoading(true);
+        // We need to fetch all users from the 'users' collection to build the leaderboard
+        
+        const usersRef = collection(db, 'users');
+        const snapshot = await getDocs(usersRef);
+        
+        let entries: LeaderboardEntry[] = [];
+        
+        snapshot.forEach((doc) => {
+          const userData = doc.data() as any;
+          
+          if (userData.progress && userData.progress[course.id]) {
+            let completedValue = 0;
+            Object.values(userData.progress[course.id]).forEach((status) => {
+              if (status === 'done') completedValue += 1;
+              else if (status === 'half_done') completedValue += 0.5;
+            });
+
+            if (completedValue > 0) {
+              const percentComplete = course.totalLectures === 0
+                ? 0
+                : Math.round((completedValue / course.totalLectures) * 100);
+
+              entries.push({
+                uid: userData.uid || doc.id,
+                name: userData.name || 'User',
+                photoURL: userData.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name || 'User'}`,
+                completedValue,
+                percentComplete
+              });
+            }
+          }
         });
 
-        if (completedValue > 0) {
-          const percentComplete = course.totalLectures === 0
-            ? 0
-            : Math.round((completedValue / course.totalLectures) * 100);
-
-          entries.push({
-            uid: user.uid,
-            name: user.name || 'You',
-            photoURL: user.photoURL,
-            completedValue,
-            percentComplete
-          });
-        }
+        // Sort by completed value descending
+        entries.sort((a, b) => b.completedValue - a.completedValue);
+        setLeaders(entries.slice(0, 10)); // Top 10
+      } catch (error) {
+        console.error("Error fetching leaderboard from Firestore:", error);
+      } finally {
+        setLoading(false);
       }
+    }
 
-      setLeaders(entries);
-      setLoading(false);
-    }, 500);
-  }, [course, user?.progress, user]);
+    fetchLeaderboard();
+  }, [course, user?.progress]);
 
   if (loading) {
     return (

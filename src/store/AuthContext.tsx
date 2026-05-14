@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import type { UserData } from '../types';
 
 interface AuthContextType {
@@ -31,22 +32,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        // Load user data from local storage for now, since Supabase was removed
-        // and we only added Firebase Auth and Storage.
-        const storedData = localStorage.getItem(`user_data_${firebaseUser.uid}`);
-        if (storedData) {
-          setUser(JSON.parse(storedData));
-        } else {
-          const newUser = createDefaultUserData(
-            firebaseUser.uid,
-            firebaseUser.displayName || 'User',
-            firebaseUser.email || '',
-            firebaseUser.photoURL || ''
-          );
-          localStorage.setItem(`user_data_${firebaseUser.uid}`, JSON.stringify(newUser));
-          setUser(newUser);
+        try {
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            setUser(userSnap.data() as UserData);
+          } else {
+            const newUser = createDefaultUserData(
+              firebaseUser.uid,
+              firebaseUser.displayName || 'User',
+              firebaseUser.email || '',
+              firebaseUser.photoURL || ''
+            );
+            await setDoc(userRef, newUser);
+            setUser(newUser);
+          }
+        } catch (error) {
+          console.error("Error fetching user from Firestore:", error);
         }
       } else {
         setUser(null);
@@ -69,8 +74,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUser = async (data: Partial<UserData>) => {
     if (user) {
       const updated = { ...user, ...data };
-      setUser(updated);
-      localStorage.setItem(`user_data_${user.uid}`, JSON.stringify(updated));
+      setUser(updated); // optimistic update
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, data);
+      } catch (error) {
+        console.error("Error updating user in Firestore:", error);
+      }
     }
   };
 
