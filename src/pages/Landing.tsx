@@ -4,7 +4,7 @@ import { FiBookOpen, FiActivity, FiCheckSquare, FiArrowRight } from 'react-icons
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loginWithGoogle } = useAuth();
 
   return (
     <div className="min-h-screen bg-background text-textPrimary overflow-hidden relative">
@@ -30,7 +30,7 @@ export default function Landing() {
             </button>
           ) : (
             <button 
-              onClick={() => navigate('/login')}
+              onClick={loginWithGoogle}
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity font-medium shadow-lg shadow-primary/25"
             >
               Log In
@@ -53,7 +53,7 @@ export default function Landing() {
           The all-in-one personal learning manager designed to help you crush your courses, build daily habits, and stay hyper-organized.
         </p>
         <button 
-          onClick={() => navigate('/login')}
+          onClick={loginWithGoogle}
           className="group flex items-center gap-2 px-8 py-4 rounded-full bg-white text-background font-bold text-lg hover:scale-105 transition-transform"
         >
           Get Started

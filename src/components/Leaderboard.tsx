@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
 import type { Course } from '../types';
-
 import { useAuth } from '../store/AuthContext';
 
 interface LeaderboardProps {
@@ -22,62 +20,38 @@ export default function Leaderboard({ course }: LeaderboardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchLeaderboard() {
-      try {
-        // Fetch all profiles and progress for this course separately
-        const [profilesRes, progressRes] = await Promise.all([
-          supabase.from('profiles').select('id, name, "photoURL"'),
-          supabase.from('progress').select('user_id, status').eq('course_id', course.id)
-        ]);
-
-        if (profilesRes.error) throw profilesRes.error;
-        if (progressRes.error) throw progressRes.error;
-
-        // Group progress by user_id
-        const progressByUser: Record<string, any[]> = {};
-        progressRes.data?.forEach((p: any) => {
-          if (!progressByUser[p.user_id]) progressByUser[p.user_id] = [];
-          progressByUser[p.user_id].push(p);
+    // Mocked leaderboard data since backend is removed
+    setLoading(true);
+    setTimeout(() => {
+      let entries: LeaderboardEntry[] = [];
+      
+      // If the current user has progress, show them in the leaderboard
+      if (user && user.progress && user.progress[course.id]) {
+        let completedValue = 0;
+        Object.values(user.progress[course.id]).forEach((status) => {
+          if (status === 'done') completedValue += 1;
+          else if (status === 'half_done') completedValue += 0.5;
         });
 
-        if (profilesRes.data) {
-          const entries: LeaderboardEntry[] = profilesRes.data.map((profile: any) => {
-            let completedValue = 0;
-            const userProgress = progressByUser[profile.id] || [];
+        if (completedValue > 0) {
+          const percentComplete = course.totalLectures === 0
+            ? 0
+            : Math.round((completedValue / course.totalLectures) * 100);
 
-            userProgress.forEach((p: any) => {
-              if (p.status === 'done') completedValue += 1;
-              else if (p.status === 'half_done') completedValue += 0.5;
-            });
-
-            const percentComplete = course.totalLectures === 0
-              ? 0
-              : Math.round((completedValue / course.totalLectures) * 100);
-
-            return {
-              uid: profile.id,
-              name: profile.name || 'Anonymous',
-              photoURL: profile.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name || 'User'}`,
-              completedValue,
-              percentComplete
-            };
+          entries.push({
+            uid: user.uid,
+            name: user.name || 'You',
+            photoURL: user.photoURL,
+            completedValue,
+            percentComplete
           });
-
-          // Sort by completed value descending, filter out zero progress
-          entries.sort((a, b) => b.completedValue - a.completedValue);
-          const filtered = entries.filter(e => e.completedValue > 0);
-
-          setLeaders(filtered.slice(0, 10)); // Top 10
         }
-      } catch (err) {
-        console.error('Error fetching leaderboard:', err);
-      } finally {
-        setLoading(false);
       }
-    }
 
-    fetchLeaderboard();
-  }, [course, user?.progress]);
+      setLeaders(entries);
+      setLoading(false);
+    }, 500);
+  }, [course, user?.progress, user]);
 
   if (loading) {
     return (
