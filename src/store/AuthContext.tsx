@@ -22,7 +22,10 @@ const createDefaultUserData = (uid: string, name: string, email: string, photoUR
   photoURL: photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name || 'User'}`,
   streak: 0,
   longestStreak: 0,
-  lastActiveDate: new Date().toISOString().split('T')[0],
+  lastActiveDate: (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  })(),
   progress: {},
   todos: [],
   activity: []
@@ -87,7 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const recordActivity = async () => {
     if (!user) return;
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Use local date for streak calculations
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
     let newStreak = user.streak;
     let newLongestStreak = user.longestStreak;
@@ -103,14 +108,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Update streak logic
-    if (user.lastActiveDate !== todayStr) {
+    if (user.streak === 0) {
+      // First activity ever
+      newStreak = 1;
+      newLastActiveDate = todayStr;
+    } else if (user.lastActiveDate !== todayStr) {
       if (!user.lastActiveDate) {
         newStreak = 1;
       } else {
         const lastActive = new Date(user.lastActiveDate);
         const today = new Date(todayStr);
         const diffTime = Math.abs(today.getTime() - lastActive.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
         
         if (diffDays === 1) {
           // Consecutive day
@@ -121,9 +130,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       newLastActiveDate = todayStr;
-      if (newStreak > newLongestStreak) {
-        newLongestStreak = newStreak;
-      }
+    }
+
+    if (newStreak > newLongestStreak) {
+      newLongestStreak = newStreak;
     }
 
     await updateUser({
