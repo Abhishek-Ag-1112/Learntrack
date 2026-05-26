@@ -10,7 +10,7 @@ export default function CourseCard({ course }: CourseCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const courseProgress = user?.progress[course.id] || {};
+  const courseProgress = (user?.progress || {})[course.id] || {};
   
   // Calculate progress
   let completedValue = 0;

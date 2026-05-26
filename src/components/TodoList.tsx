@@ -98,7 +98,7 @@ export default function TodoList() {
             {activeTodos.map(todo => (
               <div 
                 key={todo.id} 
-                className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${todo.completed ? 'bg-white/5 border-transparent opacity-60' : 'bg-surface/50 border-white/5 hover:border-white/10'}`}
+                className={`group flex items-center gap-3 p-3 rounded-xl border transition-all ${todo.completed ? 'bg-white/5 border-transparent opacity-60' : 'bg-surface/50 border-white/5 hover:border-white/10'}`}
               >
                 <button 
                   onClick={() => handleToggle(todo.id)}

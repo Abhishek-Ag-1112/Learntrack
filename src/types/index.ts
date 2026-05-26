@@ -36,6 +36,18 @@ export interface HeatmapData {
   count: number;
 }
 
+export interface HabitLog {
+  [dateStr: string]: 'done' | 'missed' | 'skipped' | 'none';
+}
+
+export interface Habit {
+  id: string;
+  name: string;
+  category: string;
+  color: string;
+  logs: HabitLog;
+}
+
 export interface UserData {
   uid: string;
   name: string;
@@ -47,6 +59,7 @@ export interface UserData {
   progress: UserProgress;
   todos: Todo[];
   activity: HeatmapData[];
+  habits?: Habit[];
 }
 
 export const _types = true;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Course } from '../types';
+import type { Course, UserData } from '../types';
 import { useAuth } from '../store/AuthContext';
 
 interface LeaderboardProps {
@@ -30,10 +30,10 @@ export default function Leaderboard({ course }: LeaderboardProps) {
         const usersRef = collection(db, 'users');
         const snapshot = await getDocs(usersRef);
         
-        let entries: LeaderboardEntry[] = [];
+        const entries: LeaderboardEntry[] = [];
         
         snapshot.forEach((doc) => {
-          const userData = doc.data() as any;
+          const userData = doc.data() as UserData;
           
           if (userData.progress && userData.progress[course.id]) {
             let completedValue = 0;

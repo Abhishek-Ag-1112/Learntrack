@@ -9,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  updateUser: (data: Partial<UserData>) => Promise<void>;
+  updateUser: (data: Partial<UserData> | ((prev: UserData) => Partial<UserData>)) => Promise<void>;
   recordActivity: () => Promise<void>;
 }
 
@@ -28,7 +28,8 @@ const createDefaultUserData = (uid: string, name: string, email: string, photoUR
   })(),
   progress: {},
   todos: [],
-  activity: []
+  activity: [],
+  habits: []
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -43,7 +44,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userSnap = await getDoc(userRef);
 
           if (userSnap.exists()) {
-            setUser(userSnap.data() as UserData);
+            const data = userSnap.data() as UserData;
+            setUser({
+              ...data,
+              streak: data.streak ?? 0,
+              longestStreak: data.longestStreak ?? 0,
+              lastActiveDate: data.lastActiveDate ?? null,
+              progress: data.progress ?? {},
+              todos: data.todos ?? [],
+              activity: data.activity ?? [],
+              habits: data.habits ?? []
+            });
           } else {
             const newUser = createDefaultUserData(
               firebaseUser.uid,
@@ -75,72 +86,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth);
   };
 
-  const updateUser = async (data: Partial<UserData>) => {
+  const updateUser = async (data: Partial<UserData> | ((prev: UserData) => Partial<UserData>)) => {
     if (user) {
-      const updated = { ...user, ...data };
-      setUser(updated); // optimistic update
-      try {
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, data);
-      } catch (error) {
-        console.error("Error updating user in Firestore:", error);
-      }
+      setUser(prev => {
+        if (!prev) return null;
+        const resolvedData = typeof data === 'function' ? data(prev) : data;
+        const updated = { ...prev, ...resolvedData };
+        
+        // Perform Firestore update with the resolved data
+        const userRef = doc(db, 'users', prev.uid);
+        updateDoc(userRef, resolvedData).catch((error) => {
+          console.error("Error updating user in Firestore:", error);
+        });
+
+        return updated;
+      });
     }
   };
 
   const recordActivity = async () => {
-    if (!user) return;
-    // Use local date for streak calculations
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    
-    let newStreak = user.streak;
-    let newLongestStreak = user.longestStreak;
-    let newLastActiveDate = user.lastActiveDate;
-    const newActivity = [...user.activity];
+    await updateUser((prev) => {
+      // Use local date for streak calculations
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      
+      let newStreak = prev.streak;
+      let newLongestStreak = prev.longestStreak;
+      let newLastActiveDate = prev.lastActiveDate;
+      const newActivity = [...prev.activity];
 
-    // Update heatmap count
-    const todayActivityIndex = newActivity.findIndex(a => a.date === todayStr);
-    if (todayActivityIndex !== -1) {
-      newActivity[todayActivityIndex].count += 1;
-    } else {
-      newActivity.push({ date: todayStr, count: 1 });
-    }
-
-    // Update streak logic
-    if (user.streak === 0) {
-      // First activity ever
-      newStreak = 1;
-      newLastActiveDate = todayStr;
-    } else if (user.lastActiveDate !== todayStr) {
-      if (!user.lastActiveDate) {
-        newStreak = 1;
+      // Update heatmap count
+      const todayActivityIndex = newActivity.findIndex(a => a.date === todayStr);
+      if (todayActivityIndex !== -1) {
+        newActivity[todayActivityIndex].count += 1;
       } else {
-        const lastActive = new Date(user.lastActiveDate);
-        const today = new Date(todayStr);
-        const diffTime = Math.abs(today.getTime() - lastActive.getTime());
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
-        
-        if (diffDays === 1) {
-          // Consecutive day
-          newStreak += 1;
-        } else if (diffDays > 1) {
-          // Streak broken
-          newStreak = 1;
-        }
+        newActivity.push({ date: todayStr, count: 1 });
       }
-      newLastActiveDate = todayStr;
-    }
 
-    if (newStreak > newLongestStreak) {
-      newLongestStreak = newStreak;
-    }
+      // Update streak logic
+      if (prev.streak === 0) {
+        // First activity ever
+        newStreak = 1;
+        newLastActiveDate = todayStr;
+      } else if (prev.lastActiveDate !== todayStr) {
+        if (!prev.lastActiveDate) {
+          newStreak = 1;
+        } else {
+          const lastActive = new Date(prev.lastActiveDate);
+          const today = new Date(todayStr);
+          const diffTime = Math.abs(today.getTime() - lastActive.getTime());
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+          
+          if (diffDays === 1) {
+            // Consecutive day
+            newStreak += 1;
+          } else if (diffDays > 1) {
+            // Streak broken
+            newStreak = 1;
+          }
+        }
+        newLastActiveDate = todayStr;
+      }
 
-    await updateUser({
-      streak: newStreak,
-      longestStreak: newLongestStreak,
-      lastActiveDate: newLastActiveDate,
-      activity: newActivity
+      if (newStreak > newLongestStreak) {
+        newLongestStreak = newStreak;
+      }
+
+      return {
+        streak: newStreak,
+        longestStreak: newLongestStreak,
+        lastActiveDate: newLastActiveDate,
+        activity: newActivity
+      };
     });
   };
 
@@ -175,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

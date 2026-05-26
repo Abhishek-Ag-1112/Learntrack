@@ -53,7 +53,7 @@ export default function Landing() {
           The all-in-one personal learning manager designed to help you crush your courses, build daily habits, and stay hyper-organized.
         </p>
         <button 
-          onClick={loginWithGoogle}
+          onClick={() => user ? navigate('/dashboard') : loginWithGoogle()}
           className="group flex items-center gap-2 px-8 py-4 rounded-full bg-white text-background font-bold text-lg hover:scale-105 transition-transform"
         >
           Get Started

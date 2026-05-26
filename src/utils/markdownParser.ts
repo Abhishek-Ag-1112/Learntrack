@@ -47,7 +47,7 @@ function parseCourseSection(id: string, title: string, text: string): Course {
         if (lectureTitle) {
           currentPhase.lectures.push({
             id: `${id}-${currentPhase.id}-l${currentPhase.lectures.length + 1}`,
-            title: lectureTitle,
+            title: lectureTitle.replace(/\*\*/g, ''), // Strip bold markdown asterisks
             status: 'not_done'
           });
           totalLectures++;

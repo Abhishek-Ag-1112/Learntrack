@@ -1,10 +1,10 @@
 # 🎓 LearnTrack
 
-A premium personal learning management app built with **React**, **Vite**, **TypeScript**, **Tailwind CSS**, and **Supabase**.
+A premium personal learning management app built with **React**, **Vite**, **TypeScript**, **Tailwind CSS**, and **Firebase**.
 
 Track your courses, build daily streaks, compete on leaderboards, and own your learning progress.
 
-![LearnTrack](https://img.shields.io/badge/React-19-blue?logo=react) ![Vite](https://img.shields.io/badge/Vite-8-purple?logo=vite) ![Supabase](https://img.shields.io/badge/Supabase-Backend-green?logo=supabase) ![TypeScript](https://img.shields.io/badge/TypeScript-6-blue?logo=typescript)
+![LearnTrack](https://img.shields.io/badge/React-19-blue?logo=react) ![Vite](https://img.shields.io/badge/Vite-8-purple?logo=vite) ![Firebase](https://img.shields.io/badge/Firebase-Backend-orange?logo=firebase) ![TypeScript](https://img.shields.io/badge/TypeScript-6-blue?logo=typescript)
 
 ---
 
@@ -15,7 +15,7 @@ Track your courses, build daily streaks, compete on leaderboards, and own your l
 - **Leaderboard** — Per-course rankings showing top learners in real-time
 - **Activity Heatmap** — GitHub-style contribution heatmap to visualize your learning streak
 - **Todo List** — Personal task manager for daily learning goals
-- **Auth** — Secure email/password authentication via Supabase
+- **Auth** — Secure Google authentication via Firebase Auth
 
 ---
 
@@ -24,7 +24,7 @@ Track your courses, build daily streaks, compete on leaderboards, and own your l
 ### Prerequisites
 
 - **Node.js** 18+
-- A **Supabase** project ([create one free](https://supabase.com))
+- A **Firebase** project ([create one free](https://console.firebase.google.com))
 
 ### 1. Clone the repository
 
@@ -41,24 +41,29 @@ npm install
 
 ### 3. Set up environment variables
 
-Copy the example env file and fill in your Supabase credentials:
+Copy the example env file and fill in your Firebase credentials:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your values from **Supabase Dashboard → Settings → API**:
+Edit `.env` with your values from **Firebase Console → Project Settings → General (Your Apps)**:
 
 ```env
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_FIREBASE_API_KEY=your-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project-id.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+VITE_FIREBASE_APP_ID=your-app-id
+VITE_FIREBASE_MEASUREMENT_ID=your-measurement-id
 ```
 
 ### 4. Set up the database
 
-1. Open the **SQL Editor** in your Supabase dashboard
-2. Paste the contents of `schema.sql`
-3. Click **Run**
+1. In the **Firebase Console**, navigate to **Firestore Database**
+2. Click **Create database** and choose your starting security rules
+3. Enable the database and ensure the `users` collection is configured (automatically created on first user activity/login)
 
 ### 5. Start the dev server
 
@@ -131,7 +136,7 @@ learntrack/
 |------------|-------------------------------------|
 | Frontend   | React 19, TypeScript 6, Vite 8     |
 | Styling    | Tailwind CSS 4                      |
-| Backend    | Supabase (Auth + PostgreSQL + RLS)  |
+| Backend    | Firebase (Auth + Cloud Firestore)   |
 | Deployment | Vercel                              |
 
 ---

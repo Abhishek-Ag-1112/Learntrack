@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../store/AuthContext';
 import { parseCourses } from '../utils/markdownParser';
-import type { Course, Phase } from '../types';
+import type { Phase } from '../types';
 import { FiArrowLeft, FiCheck, FiMinus } from 'react-icons/fi';
 import Leaderboard from '../components/Leaderboard';
 
@@ -11,21 +11,21 @@ export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, updateUser, recordActivity } = useAuth();
   const navigate = useNavigate();
-  const [course, setCourse] = useState<Course | null>(null);
+  
+  const course = useMemo(() => {
+    const courses = parseCourses();
+    return courses.find(c => c.id === id) || null;
+  }, [id]);
 
   useEffect(() => {
     if (!user) {
-      navigate('/login');
-      return;
+      navigate('/');
     }
-    const courses = parseCourses();
-    const found = courses.find(c => c.id === id);
-    if (found) setCourse(found);
-  }, [id, user, navigate]);
+  }, [user, navigate]);
 
   if (!user || !course) return <div className="min-h-screen bg-background" />;
 
-  const courseProgress = user.progress[course.id] || {};
+  const courseProgress = (user.progress || {})[course.id] || {};
 
   let completedValue = 0;
   Object.values(courseProgress).forEach(status => {
@@ -69,7 +69,7 @@ export default function CourseDetail() {
     <div className="min-h-screen bg-background flex">
       <Sidebar />
       
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
+      <main className="flex-1 md:ml-64 p-6 md:p-8 pt-24 md:pt-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           <button 
             onClick={() => navigate('/dashboard')}
