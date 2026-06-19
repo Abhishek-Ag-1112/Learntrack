@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
 import { FiBookOpen, FiActivity, FiCheckSquare, FiArrowRight } from 'react-icons/fi';
@@ -5,6 +6,12 @@ import { FiBookOpen, FiActivity, FiCheckSquare, FiArrowRight } from 'react-icons
 export default function Landing() {
   const navigate = useNavigate();
   const { user, loginWithGoogle } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen bg-background text-textPrimary overflow-hidden relative">

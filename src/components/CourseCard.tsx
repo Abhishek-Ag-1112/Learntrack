@@ -52,11 +52,11 @@ export default function CourseCard({ course, onDelete }: CourseCardProps) {
           {statusBadge}
         </div>
         <div className="flex items-center gap-2">
-          {onDelete && course.id.startsWith('custom-') && (
+          {onDelete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm("Are you sure you want to delete this custom course? Your progress will also be removed.")) {
+                if (window.confirm("Are you sure you want to delete this course? Your progress will also be removed.")) {
                   onDelete(course.id);
                 }
               }}

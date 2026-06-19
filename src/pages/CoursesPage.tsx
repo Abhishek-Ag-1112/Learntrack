@@ -71,8 +71,10 @@ export default function CoursesPage() {
 
   const courses = useMemo(() => {
     const defaultCourses = parseCourses();
-    return [...defaultCourses, ...(user?.customCourses || [])];
-  }, [user?.customCourses]);
+    const allCourses = [...defaultCourses, ...(user?.customCourses || [])];
+    const deletedIds = user?.deletedCourseIds || [];
+    return allCourses.filter(c => !deletedIds.includes(c.id));
+  }, [user?.customCourses, user?.deletedCourseIds]);
 
   if (!user) return null;
 
@@ -174,6 +176,11 @@ export default function CoursesPage() {
     const existingCustom = user?.customCourses || [];
     const updatedCustom = existingCustom.filter(c => c.id !== courseId);
     
+    const updatedDeletedIds = [...(user?.deletedCourseIds || [])];
+    if (!updatedDeletedIds.includes(courseId)) {
+      updatedDeletedIds.push(courseId);
+    }
+    
     const updatedProgress = { ...(user?.progress || {}) };
     if (updatedProgress[courseId]) {
       delete updatedProgress[courseId];
@@ -181,6 +188,7 @@ export default function CoursesPage() {
 
     updateUser({
       customCourses: updatedCustom,
+      deletedCourseIds: updatedDeletedIds,
       progress: updatedProgress
     });
   };

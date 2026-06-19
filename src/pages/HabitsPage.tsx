@@ -57,8 +57,8 @@ export default function HabitsPage() {
   const navigate = useNavigate();
 
   // Selected Month State
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(4); // 0-indexed (4 = May)
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
 
   // Add Habit Form State
   const [newHabitName, setNewHabitName] = useState('');

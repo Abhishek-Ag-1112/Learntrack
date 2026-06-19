@@ -61,6 +61,7 @@ export interface UserData {
   activity: HeatmapData[];
   habits?: Habit[];
   customCourses?: Course[];
+  deletedCourseIds?: string[];
 }
 
 export const _types = true;

@@ -14,8 +14,10 @@ export default function Dashboard() {
   
   const courses = useMemo(() => {
     const defaultCourses = parseCourses();
-    return [...defaultCourses, ...(user?.customCourses || [])];
-  }, [user?.customCourses]);
+    const allCourses = [...defaultCourses, ...(user?.customCourses || [])];
+    const deletedIds = user?.deletedCourseIds || [];
+    return allCourses.filter(c => !deletedIds.includes(c.id));
+  }, [user?.customCourses, user?.deletedCourseIds]);
 
   useEffect(() => {
     if (!user) {

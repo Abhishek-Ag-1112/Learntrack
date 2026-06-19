@@ -15,8 +15,9 @@ export default function CourseDetail() {
   const course = useMemo(() => {
     const defaultCourses = parseCourses();
     const allCourses = [...defaultCourses, ...(user?.customCourses || [])];
-    return allCourses.find(c => c.id === id) || null;
-  }, [id, user?.customCourses]);
+    const deletedIds = user?.deletedCourseIds || [];
+    return allCourses.filter(c => !deletedIds.includes(c.id)).find(c => c.id === id) || null;
+  }, [id, user?.customCourses, user?.deletedCourseIds]);
 
   useEffect(() => {
     if (!user) {
