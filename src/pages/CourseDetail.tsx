@@ -13,9 +13,10 @@ export default function CourseDetail() {
   const navigate = useNavigate();
   
   const course = useMemo(() => {
-    const courses = parseCourses();
-    return courses.find(c => c.id === id) || null;
-  }, [id]);
+    const defaultCourses = parseCourses();
+    const allCourses = [...defaultCourses, ...(user?.customCourses || [])];
+    return allCourses.find(c => c.id === id) || null;
+  }, [id, user?.customCourses]);
 
   useEffect(() => {
     if (!user) {

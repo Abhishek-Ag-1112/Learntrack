@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import CourseCard from '../components/CourseCard';
@@ -12,7 +12,11 @@ import { FaFire } from 'react-icons/fa';
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [courses] = useState<Course[]>(() => parseCourses());
+  
+  const courses = useMemo(() => {
+    const defaultCourses = parseCourses();
+    return [...defaultCourses, ...(user?.customCourses || [])];
+  }, [user?.customCourses]);
 
   useEffect(() => {
     if (!user) {

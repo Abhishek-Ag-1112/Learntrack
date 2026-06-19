@@ -60,6 +60,7 @@ export interface UserData {
   todos: Todo[];
   activity: HeatmapData[];
   habits?: Habit[];
+  customCourses?: Course[];
 }
 
 export const _types = true;

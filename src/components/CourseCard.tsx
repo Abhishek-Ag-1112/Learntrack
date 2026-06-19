@@ -1,12 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import type { Course } from '../types';
 import { useAuth } from '../store/AuthContext';
+import { FiTrash2 } from 'react-icons/fi';
 
 interface CourseCardProps {
   course: Course;
+  onDelete?: (courseId: string) => void;
 }
 
-export default function CourseCard({ course }: CourseCardProps) {
+export default function CourseCard({ course, onDelete }: CourseCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -34,6 +36,12 @@ export default function CourseCard({ course }: CourseCardProps) {
     badgeColor = "bg-primary/20 text-primary-light";
   }
 
+  const getCourseEmoji = (id: string) => {
+    if (id === 'c1') return '👨‍💻';
+    if (id === 'c2') return '🤖';
+    return '📚';
+  };
+
   return (
     <div 
       onClick={() => navigate(`/course/${course.id}`)}
@@ -43,8 +51,24 @@ export default function CourseCard({ course }: CourseCardProps) {
         <div className={`px-2.5 py-1 rounded-md text-xs font-semibold ${badgeColor}`}>
           {statusBadge}
         </div>
-        <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-xl shadow-inner border border-white/5 group-hover:scale-110 transition-transform">
-          {course.id === 'c1' ? '👨‍💻' : '🤖'}
+        <div className="flex items-center gap-2">
+          {onDelete && course.id.startsWith('custom-') && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("Are you sure you want to delete this custom course? Your progress will also be removed.")) {
+                  onDelete(course.id);
+                }
+              }}
+              className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 transition-all cursor-pointer"
+              title="Delete Course"
+            >
+              <FiTrash2 className="text-lg" />
+            </button>
+          )}
+          <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-xl shadow-inner border border-white/5 group-hover:scale-110 transition-transform">
+            {getCourseEmoji(course.id)}
+          </div>
         </div>
       </div>
       

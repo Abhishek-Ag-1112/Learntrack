@@ -235,7 +235,7 @@ export default function NewsPage() {
 
   // Configuration State (Pre-filled with environment values or fallback)
   const [apiKey] = useState(() => import.meta.env.VITE_OPENROUTER_API_KEY || '');
-  const [model] = useState('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free');
+  const model = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
 
 
 
@@ -323,23 +323,52 @@ export default function NewsPage() {
     setError(null);
     setArticles([]);
 
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `You are a professional real-time news journalist. Generate a JSON array containing exactly 12 highly detailed, realistic, and up-to-date simulated news articles for the last 24 hours on these specific topics: "${topics}".
+    // Step 1: Fetch real-time headlines using Google News RSS search via a public CORS-friendly JSON converter
+    let contextHeadlines = '';
+    try {
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topics)}&hl=en-US&gl=US&ceid=US:en`;
+      const fetchUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+      const rssRes = await fetch(fetchUrl);
+      if (rssRes.ok) {
+        const rssData = await rssRes.json();
+        if (rssData && rssData.status === 'ok' && Array.isArray(rssData.items)) {
+          contextHeadlines = rssData.items
+            .slice(0, 10)
+            .map((item: any, idx: number) => {
+              return `${idx + 1}. Headline: ${item.title}\nDate: ${item.pubDate}\nDescription: ${item.description || 'No description available.'}`;
+            })
+            .join('\n\n');
+        }
+      }
+    } catch (rssError) {
+      console.warn('Could not fetch real-time news headlines. Falling back to simulation.', rssError);
+    }
 
-Each article must feel incredibly authentic, premium, and informative.
+    const prompt = `You are a professional real-time news journalist. Today's date is ${dateStr}.
+    
+    Here is the real-time news background context for the topics "${topics}" retrieved from actual search results today:
+    
+    ${contextHeadlines || 'No real-time search context was found. Please simulate realistic and plausible news for today.'}
 
-Return ONLY a valid JSON array, with no markdown formatting, no backticks (e.g. do NOT wrap in \`\`\`json), and no conversational intro/outro text. The JSON structure MUST be exactly like this:
-[
-  {
-    "id": "1",
-    "title": "Article Headline",
-    "summary": "Short 1-2 sentence overview of the news.",
-    "content": "Full detailed article content (2-3 paragraphs) explaining the latest developments, quotes, and impact.",
-    "category": "Technology, Finance, Space, Science, etc.",
-    "timeAgo": "2 hours ago, 5 hours ago, etc.",
-    "readTime": "3 min read"
-  }
-]`;
+    Using this real-time news background context (or simulating realistic news if context is missing), generate a JSON array containing exactly 12 highly detailed, realistic, and up-to-date simulated news articles for the last 24 hours.
+
+    Each article must feel incredibly authentic, premium, and informative.
+
+    Return ONLY a valid JSON array, with no markdown formatting, no backticks (e.g. do NOT wrap in \`\`\`json), and no conversational intro/outro text. The JSON structure MUST be exactly like this:
+    [
+      {
+        "id": "1",
+        "title": "Article Headline",
+        "summary": "Short 1-2 sentence overview of the news.",
+        "content": "Full detailed article content (2-3 paragraphs) explaining the latest developments, quotes, and impact.",
+        "category": "Technology, Finance, Space, Science, etc.",
+        "timeAgo": "2 hours ago, 5 hours ago, etc.",
+        "readTime": "3 min read"
+      }
+    ]`;
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -538,7 +567,9 @@ Return ONLY a valid JSON array, with no markdown formatting, no backticks (e.g. 
                   <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-textSecondary text-lg" />
                 </div>
               </div>
-              <div className="flex justify-between items-center">
+
+
+              <div className="flex justify-between items-center pt-2">
                 <div className="flex gap-2">
                   <button 
                     type="button"
@@ -550,7 +581,7 @@ Return ONLY a valid JSON array, with no markdown formatting, no backticks (e.g. 
                   <button 
                     type="button"
                     onClick={() => setTopics('nuclear fusion, green hydrogen, clean energy')}
-                    className="text-xs text-textSecondary bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/5 transition-colors cursor-pointer"
+                    className="text-xs text-textSecondary bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/5 transition-colors transition-all cursor-pointer"
                   >
                     ⚡ Clean Energy
                   </button>
